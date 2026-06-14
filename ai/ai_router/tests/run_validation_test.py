@@ -31,6 +31,10 @@ TEST_PROMPTS = [
     ("Another quick question about world history.", "General")
 ]
 
+def side_block_mock_crash(*args, **kwargs):
+    """Simulates an Ollama 500 error or VRAM allocation failure"""
+    raise RuntimeError("Ollama HTTP 500: VRAM Allocation Failed (Mocked Crash)")
+
 def simulate_request(prompt_id, prompt_tuple):
     prompt, expected_type = prompt_tuple
     start_time = time.time()
@@ -70,14 +74,10 @@ def run_test_suite(concurrency, simulate_worker_crash=False):
     
     if simulate_worker_crash:
         # We patch the worker generation call to raise an exception to test Stage 2
-        with patch.object(engine.client, 'generate_worker_response', side_block_mock_crash):
+        with patch.object(engine.client, 'generate_worker_response', side_effect=side_block_mock_crash):
             execute_threads(concurrency)
     else:
         execute_threads(concurrency)
-
-def side_block_mock_crash(*args, **kwargs):
-    """Simulates an Ollama 500 error or VRAM allocation failure"""
-    raise RuntimeError("Ollama HTTP 500: VRAM Allocation Failed (Mocked Crash)")
 
 def execute_threads(concurrency):
     with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
